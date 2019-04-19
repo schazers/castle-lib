@@ -1,58 +1,110 @@
 require 'sounds'
 require 'collision'
-require 'SpriteSheet'
 local moonshine = require 'moonshine'
 
+-- Number of bits on both axes. Can be set from tweet code.
+N = 31
+X,Y = 1,1
+x,y = 1,1
+local bits = {}
+local timers = {}
+local NUM_TIMERS = 9
+local startTime = nil
+local user = {}
 
--- shortname aliases -- 
+-- KEY PRESSES
+-- when a lower-case value is set to 1,
+-- it means the corresponding key was pressed
+-- in the previous frame
+--
+-- when an upper-case value is set to 1,
+-- it means the corresponding key is being
+-- held down at that moment
+--
+-- s = spacebar, u = up, d = down, l = left, r = right
+s,u,d,l,r,S,U,D,L,R = 0,0,0,0,0,0,0,0,0,0
 
--- BUTTONS
-function UP() return BTN('up') end      -- UP ARROW HELD
-function DN() return BTN('down') end    -- DOWN ARROW HELD
-function LT()                           -- LEFT ARROW HELD
-  return BTN('left') and 1 or 0 
+-- MATHS
+function FLR(a) return math.floor(a) end
+function DEG(a) return math.deg(a) end
+function RAD(a) return math.rad(a) end
+function CEIL(a) return math.ceil(a) end
+-- TODO: can condense below two RAND funcs
+-- Gen integer in range [a,b]
+function RN(a, b) return FLR(math.random(a, b)) end
+function RC() return RN(1,12) end -- GET RANDOM COLOR INDEX
+-- Gen integer is range [1,N] where N = Number of bits
+function RNN() return FLR(math.random(1, N)) end
+-- Gen nubmer within [0,1)
+-- "Maybe" (Gen either integer 0 or 1)
+function M() return math.random()>0.5 and 1 or 0 end
+-- TODO: combine two below SRAND funcs via optional param?
+function SRAND(x) math.randomseed(x) end -- ALLOW SPECIFIC SEEDS
+function SRAND() math.randomseed(tonumber(tostring(os.time()):reverse():sub(1,6))) end -- SEED RANDOMLY
+function ABS(a, b) return math.abs(a, b) end
+function SQRT(a) return math.sqrt(a) end
+function LOG(x) return math.log(x) end
+function EXP(x) return math.exp(x) end
+function POW(x,y) return math.pow(x,y) end
+function SIN(x) return math.sin(x) end
+function COS(x) return math.cos(x) end
+function TAN(x) return math.tan(x) end
+function ASIN(x) return math.asin(x) end
+function ACOS(x) return math.acos(x) end
+function ATAN(x) return math.atan(x) end
+function ATAN2(x, y) return math.atan2(y, x) end
+function PI() return math.pi end
+function MIN(nums) return math.min(nums) end -- TODO: variable-length arglist (ref: see math.min)
+function CL(min,val,max) CLAMP(min,val,max) end
+function CLAMP(min, val, max)
+  if min > max then 
+    min, max = max, min
+  end
+  return math.max(min, math.min(max, val))
 end
-function RT()                           -- RIGHT ARROW HELD
-  return BTN('right') and 1 or 0
+
+-- TIMERS
+-- Pass no 'idx', e.g. call 'T()', to access program's total time so far
+function T(idx) -- GET TIMES OF TIMERS
+  if idx == nil then return love.timer.getTime() - startTime
+  else return love.timer.getTime() - timers[idx] end
 end
-function Z() return BTN('z') end        -- 'Z' HELD
-function X() return BTN('x') end        -- 'X' HELD
-function M() return MOUSE() end         -- MOUSE LEFT BUTTON HELD
+function RT(idx) timers[idx] = love.timer.getTime() end -- RESET A TIMER
 
-function UPP() return BTNP('up') end    -- UP ARROW PRESSED
-function DNP() return BTNP('down') end  -- DOWN ARROW PRESSED
-function LTP() return BTNP('left') end  -- LEFT ARROW PRESSED
-function RTP() return BTNP('right') end -- RIGHT ARROW PRESSED
-function ZP() return BTNP('z') end      -- 'Z' PRESSED
-function XP() return BTNP('x') end      -- 'X' PRESSED
+function B(x,y,c) BIT(x,y,c) end      -- SET BIT
+function H(y,x1,x2,col) for i=x1,x2 do BIT(i,y,col) end end -- HORIZONTAL LINE OF BITS
+function V(x,y1,y2,col) for i=y1,y2 do BIT(x,i,col) end end -- VERTICAL LINE OF BITS
+function RB(x1,y1,x2,y2,col) for i=y1,y2 do H(i,x1,x2,col) end end -- RECT OF BITS
+function AB(theBits) for i=0,#theBits do B(theBits[1],theBits[2],theBits[3]) end end -- SET TABLE OF BITS
+function BG(col) RB(0,0,N,N,col) end -- DRAW SCREEN A BACKGROUND COLOR
 
-function MP() return MOUSEP() end       -- MOUSE LEFT BUTTON PRESSED
+function G(xBit,yBit) return bits[xBit][yBit] end -- GET BIT - Get color of bit. Returns 0 if no bit.
+function GC(col) -- GET COL OF N BITS
+  return bits[col]
+end 
+function GR(row) -- GET ROW OF N BITS
+  local bitsToReturn = {}
+  for i=1,N do 
+    bitsToReturn[1] = i
+    bitsToReturn[2] = row
+    bitsToReturn[3] = bits[i][row] 
+  end
+  return bitsToReturn
+end
 
--- MATH
-function RN() return RAND() end         -- RANDOM IN RANGE [0,1)
-function RN(a, b) return RAND(a,b) end  -- RANDOM IN RANGE [a, b)
-
--- GFX
-function TX(msg,x,y,scale,color,font) TEXT(msg,x,y,scale,color,font) end   -- TEXT
-function R(x1,y1,x2,y2,color,alpha) RECT(x1,y1,x2,y2,color,alpha) end      -- RECT
-function RF(x1,y1,x2,y2,color,alpha) RECTFILL(x1,y1,x2,y2,color,alpha) end -- RECT FILLED
-function C(x,y,r,color) CIRC(x,y,r,color) end                              -- CIRCLE
-function CF(x,y,r,color) CIRCFILL(x,y,r,color) end                         -- CIRCLE FILLED
-function L(x1,y1,x2,y2,color) LINE(x1,y1,x2,y2,color) end                  -- LINE
-function P(x,y,color) PSET(x,y,color) end                                  -- POINT
-function PS(pts, color) PSETS(pts,color) end                               -- POINTS
-function I(fname,x1,y1,x2,y2,aspect) IMG(fname,x1,y1,x2,y2,aspect) end     -- IMAGE
-function A(x1,y1,x2,y2,aspect) AVATAR(x1,y1,x2,y2,aspect) end              -- AVATAR
-function UN() return USERNAME() end                                        -- USERNAME
+function A(x1,y1,x2,y2)
+  x1 = FLR(CLAMP(1,x1,N))
+  y1 = FLR(CLAMP(1,y1,N))
+  local w = love.graphics.getWidth()
+  local h = love.graphics.getHeight()
+  xA,xB = (x1-1)*(w/N),(x2-1)*(w/N)
+  yA,yB = (y1-1)*(h/N),(y2-1)*(h/N)
+  AVATAR(xA,yA,xB,yB,aspect)
+  bits[x1][y1] = -1
+end
 
 -- SOUND
-function PL(fname) PLAYSND(fname,1.0,false) end
-function LP(fname) PLAYSND(fname,1.0,true) end
-function V(fname,vol) VOLUME(fname, vol) end
-
--- MISC
-function SR() SRAND() end        -- SEED RANDOMLY
-function S(type) THEME(type) end -- S for 'Style'
+function S(fname) PLAYSND(fname,1.0,false) end
 
 
 -- TODO: based upon pre-processing the file, figure out what input keys are used, 
@@ -62,16 +114,8 @@ function S(type) THEME(type) end -- S for 'Style'
 -- TODO: pressing the 'c' key at any time shows a controls overlay? or 'h' for help?
 
 local Imgs = {}
+local showingManual = false
 
--- TODO: use castle's API to pre-fetch these assets ... before load time?
--- TODO: allow user to specify file extensions, or not, and dynamically
--- figure out here what filetype they are in order to load that type
--- there's enough info in the method names "PLAYSND" and "IMG" to be able to 
--- disambiguate files with the same name that are of different media types
--- but if someone has a sound titled .mp3 and another .wav, there will need
--- to be an error thrown informing them to disambiguate
--- also, name the sounds with the full file path, or just the leaf name?
--- consider that trade-off
 local soundFilenames = {}
 local imgFilenames = {}
 
@@ -97,33 +141,21 @@ function preprocess(fname)
   end
 end
 
-local user = {}
-
-local basicTimer = nil
-local startTime = nil
-
---TODO:
---preprocess 
---S()
-
---end
-
---U()
-
---end
-
--- D()
-
---end
-
--- into "function _START()", "function _UPDATE()", "function _DRAW()"
-
--- reduce method names for everything else
-
--- make a color palette per theme
-
--- make themes loadable over the network
-
+function BIT(x1,y1,c)
+  x1 = FLR(CLAMP(1,x1,N))
+  y1 = FLR(CLAMP(1,y1,N))
+  if c == nil then 
+    c = 1
+  else
+    c = CLAMP(1,c,12)
+  end
+  local w = love.graphics.getWidth()
+  local h = love.graphics.getHeight()
+  xA,xB = (x1-1)*(w/N),x1*(w/N)
+  yA,yB = (y1-1)*(h/N),y1*(h/N)
+  RECTFILL(xA,yA,xB,yB,c,1)
+  bits[x1][y1] = c
+end
 
 local function loadAssets()
   for k, v in pairs(soundFilenames) do
@@ -141,9 +173,11 @@ end
 function love.load()
   -- TODO: should instead get main entry point from .castle and preprocess 
   -- starting there. also need to pre-process recursively
-  preprocess('main_tweet.lua')
+  preprocess('bit_tweet.lua')
 
-  SR()
+  love.keyboard.setKeyRepeat(true)
+
+  SRAND()
 
   Imgs['manual'] = love.graphics.newImage('manual.png')
 
@@ -156,14 +190,24 @@ function love.load()
   love.graphics.setDefaultFilter('linear', 'linear', 1)
 
   startTime = love.timer.getTime()
-  basicTimer = startTime
+  for i=1,NUM_TIMERS do
+    timers[i] = startTime
+  end
 
-  table.insert(soundFilenames, 's.mp3')
+  -- init bits to 0
+  for i=1,N do
+    bits[i] = {}
+    for j=1,N do
+      bits[i][j]=0
+    end
+  end
+
+  table.insert(soundFilenames, 'test_sound_2.mp3')
 
   loadAssets()
 
-  S('retro') 
-  LP('s.mp3')
+  THEME('retro')
+  PLAYSND('test_sound_2.mp3',1.0,true)
 
   if _L ~=nil then _L() end
 end
@@ -179,11 +223,33 @@ function love.update(dt)
   -- TODO: update sound engine and anything else per update call
   if _U ~=nil then _U(dt) end
 
+  -- update [x,y,X,Y] based upon arrow key input
+  X = X - L * 12 * dt + R * 12 * dt
+  Y = Y - U * 12 * dt + D * 12 * dt
+  x = x - l + r
+  y = y - u + d
+  if X < 1 then X = 1 end
+  if X > N then X = N end
+  if Y < 1 then Y = 1 end
+  if Y > N then Y = N end
+  if x < 1 then x = 1 end
+  if x > N then x = N end
+  if y < 1 then y = 1 end
+  if y > N then y = N end
+
   -- nil any input
   for k, v in pairs(keysJustPressed) do
     keysJustPressed[k] = false
+    s,u,d,l,r = 0,0,0,0,0
   end
   mouseJustClicked = false
+
+  -- clear data of bits from prev frame
+  for i=1,N do
+    for j=1,N do
+      bits[i][j] = 0
+    end
+  end
 end
 
 function love.mousepressed(x, y, button, istouch, presses)
@@ -194,7 +260,7 @@ function love.mousepressed(x, y, button, istouch, presses)
   end
 end
 
-function love.mousereleased( x, y, button, istouch, presses )
+function love.mousereleased(x, y, button, istouch, presses)
   if button == 1 then
     mouseJustClickedX = nil
     mouseJustClickedY = nil
@@ -202,18 +268,29 @@ function love.mousereleased( x, y, button, istouch, presses )
   end
 end
 
-local showingManual = false
-
 function love.keypressed(key, scancode, isrepeat)
   if key == 'm' then
     showingManual = not showingManual
   else
+    if     key == 'space' then s,S = 1,1
+    elseif key == 'up'    then u,U = 1,1
+    elseif key == 'down'  then d,D = 1,1
+    elseif key == 'left'  then l,L = 1,1
+    elseif key == 'right' then r,R = 1,1
+    end
     keysJustPressed[key] = true
     keysHeld[key] = true
   end
 end
 
 function love.keyreleased(key, scancode)
+  if     key == 'space' then S = 0
+  elseif key == 'up'    then U = 0
+  elseif key == 'down'  then D = 0
+  elseif key == 'left'  then L = 0
+  elseif key == 'right' then R = 0
+  end
+
   if keysHeld[key] ~= nil then
     keysHeld[key] = false
   else
@@ -225,7 +302,6 @@ function BTN(key)
   if key == 'm' then
     -- TODO: throw warning about 'm' being a reserved key
   elseif keysHeld[key] ~= nil then
-    --print(key)
     return keysHeld[key]
   end
 end
@@ -256,6 +332,11 @@ function MOUSEP()
   end
 end
 
+function DIE_AND_RESTART()
+
+
+end
+
 local filter_effect = nil
 
 function love.draw()
@@ -268,36 +349,8 @@ function love.draw()
     if _D ~=nil then _D() end
   end
   if showingManual then
-    IMG('manual', 20, 20, W() - 20, H() - 20, 'aspect_fill')
+    -- TODO: show manual (see lib.lua for example)
   end
-end
-
-function W()
-  return love.graphics.getWidth()
-end
-
-function H()
-  return love.graphics.getHeight()
-end
-
-function HW() return 0.5 * W() end
-function HH() return 0.5 * H() end
-
-w,h,hw,hh=W(),H(),HW(),HH()
-
--- reset simple timer
-function rt()
-  basicTimer = love.timer.getTime()
-end
-
-function T()
-  return love.timer.getTime() - startTime
-end
-
--- t() offers contains a simple timer which can be reset whenever 
-function tm()
-  result = love.timer.getTime() - basicTimer
-  return result
 end
 
 -- TODO: make this do the thing. make something similarly architected to moonshine,
@@ -350,9 +403,10 @@ function COLLIDED(a, b, type)
   end
 end
 
-function PIC(px, py, cx, cy, r)
+-- Detect if point is in circle
+function PIC(px, py, cx, cy, rad)
   local dx, dy = px - cx, py - cy
-  return dx*dx + dy*dy <= r*r
+  return dx * dx + dy * dy <= rad * rad
 end
 
 
@@ -362,17 +416,17 @@ end
 -- TODO: make these apply to each theme
 
 local paletteColors = {
+  {1, 1, 1},        -- white
   {0, 0, 0},        -- black
   {0.1, 0.1, 0.1},  -- dark
-  {1.0, 0.0, 1.0},  -- purple
-  {0.0, 1.0, 1.0},  -- white
-  {1, 1, 1},        -- gray
-  {.5, .5, .5},     -- red
-  {1, 0, 0},        -- green
-  {0, 1, 0},        -- blue
-  {0, 0, 1},        -- yellow
-  {1.0, 1.0, 0.0},  -- orange
-  {0.9, 0.3, 0}     -- cyan
+  {0.5/2, 0.5/2, 0.5/2},  -- gray
+  {1.0/2, 0.0, 1.0/2},  -- purple
+  {0, 0, 1/2},        -- blue
+  {0.0, 1.0/2, 1.0/2},  -- cyan
+  {0, 1/2, 0},        -- green
+  {1.0/2, 1.0/2, 0.0},  -- yellow
+  {0.9/2, 0.3/2, 0},    -- orange
+  {1/2, 0, 0},        -- red
 }
 
 -- TODO: fixed pallette? rgb?
@@ -397,88 +451,38 @@ end
 
 -- TODO: use size and font
 -- TODO: pre-fetch font in load
-function TEXT(message, x, y, scale, color, font)
+function TEXT(message, xPos, yPos, scale, color, font)
   if message ~= nil then
     setColor(color)
-    love.graphics.print(message, x, y, 0, scale, scale)
+    love.graphics.print(message, xPos, yPos, 0, scale, scale)
   end
 end
 
 local function drawRect(type, x1, y1, x2, y2, color, alpha)
-  local x = x1
-  local y = y1
-  if x2 < x1 then x = x2 end
-  if y2 < y1 then y = y2 end
+  local xRect = x1
+  local yRect = y1
+  if x2 < x1 then xRect = x2 end
+  if y2 < y1 then yRect = y2 end
 
-  local w = math.abs(x1 - x2)
-  local h = math.abs(y1 - y2)
+  local width = math.abs(x1 - x2)
+  local height = math.abs(y1 - y2)
 
   setColor(color, alpha)
-  love.graphics.rectangle(type, x, y, w, h)
-end
-
-function RECT(x1, y1, x2, y2, color, alpha)
-  drawRect('line', x1, y1, x2, y2, color, alpha)
+  love.graphics.rectangle(type, xRect, yRect, width, height)
 end
 
 function RECTFILL(x1, y1, x2, y2, color, alpha)
   drawRect('fill', x1, y1, x2, y2, color, alpha)
 end
 
-local function drawCircle(type, x, y, r, color)
-  setColor(color)
-  -- TODO: base number of segments on radius so it's always smooth,
-  -- and also always as performant as possible
-  love.graphics.circle(type, x, y, r, 128)
-end
-
-function CIRC(x, y, r, color)
-  drawCircle('line', x, y, r, color)
-end
-
-function CIRCFILL(x, y, r, color)
-  drawCircle('fill', x, y, r, color)
-end
-
-function LINE(x1, y1, x2, y2, color)
-  local prevWidth = love.graphics.getLineWidth()
-  if theme == 'retro' then
-    love.graphics.setLineWidth(3.0)
-  end
-  setColor(color)
-  love.graphics.line(x1, y1, x2, y2)
-  love.graphics.setLineWidth(prevWidth)
-end
-
--- TODO: bugged. set exact point somehow
-function PSET(x, y, color)
-  local prevSize = love.graphics.getPointSize()
-  if theme == 'retro' then
-    love.graphics.setPointSize(3.0)
-  end
-  setColor(color)
-  love.graphics.points({x, y})
-  love.graphics.setPointSize(prevSize)
-end
-
-function PSETS(pts, color)
-  local prevSize = love.graphics.getPointSize()
-  if theme == 'retro' then
-    love.graphics.setPointSize(3.0)
-  end
-  setColor(color)
-  love.graphics.points(pts)
-  love.graphics.setPointSize(prevSize)
-end
-
 -- TODO: supplying filename needs to create image at load-time automatically
 -- and this function needs to lookup that love2d image in a table
 -- and then draw that image according to the below params
 -- TODO: define + use types for 'aspect' param
-function IMG(filename, x1, y1, x2, y2, aspect)
+local function IMG(filename, x1, y1, x2, y2, aspect)
   aspect = aspect or 'aspect_fill'
 
-  r,g,b,a = love.graphics.getColor()
+  col_r,col_g,col_b,col_a = love.graphics.getColor()
 
   if Imgs[filename] then
     love.graphics.setColor(1,1,1,1)
@@ -515,7 +519,7 @@ function IMG(filename, x1, y1, x2, y2, aspect)
     love.graphics.draw(Imgs[filename], x1, y1, 0, xScaleFactor, yScaleFactor, 0, 0)
   end
 
-  love.graphics.setColor({r,g,b,a})
+  love.graphics.setColor({col_r,col_g,col_b,col_a})
 end
 
 function AVATAR(x1, y1, x2, y2, aspect)
@@ -569,52 +573,4 @@ function STOPSND(filename)
   if Sounds[filename] then
     Sounds[filename]:stop()
   end
-end
-
--- TODO: combine two below SRAND funcs via optional param?
-
--- Allow specific seeds
-function SRAND(x) math.randomseed(x) end
--- Seeds randomly
-function SRAND()
-  -- bit-level trick from: http://lua-users.org/wiki/MathLibraryTutorial
-  math.randomseed(tonumber(tostring(os.time()):reverse():sub(1,6)))
-end
-
-function CLAMP(min, val, max)
-  if min > max then 
-    min, max = max, min 
-  end
-  return math.max(min, math.min(max, val))
-end
-
-function FLR(a) return math.floor(a) end
-function DEG(a) return math.deg(a) end
-function RAD(a) return math.rad(a) end
-function CEIL(a) return math.ceil(a) end
--- TODO: can condense below two RAND funcs
-function RAND() return math.random() end
-function RAND(a, b) return math.random(a, b) end
-function ABS(a, b) return math.abs(a, b) end
-function SQRT(a) return math.sqrt(a) end
-function LOG(x) return math.log(x) end
-function EXP(x) return math.exp(x) end
-function POW(x,y) return math.pow(x,y) end
-function SIN(x) return math.sin(x) end
-function COS(x) return math.cos(x) end
-function TAN(x) return math.tan(x) end
-function ASIN(x) return math.asin(x) end
-function ACOS(x) return math.acos(x) end
-function ATAN(x) return math.atan(x) end
-function ATAN2(x, y) return math.atan2(y, x) end
-function PI() return math.pi end
-
--- TODO: make MIN take variable-length list of args
--- see how math.min works - it already does that
-function MIN(nums)
-  return math.min(nums)
-end
-
--- TODO: make work with variable-length list of args
-function AVG(nums)
 end
