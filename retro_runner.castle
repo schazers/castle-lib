@@ -1,7 +1,7 @@
 ---
 main: retro_runner.lua
-name: Retro Runner
-username: schazers
+title: Retro Runner
+owner: schazers
 primaryColor: #00000F
-coverImageUrl: https://github.com/schazers/castle-lib/blob/master/retro_runner.png
+coverImage: https://github.com/schazers/castle-lib/blob/master/retro_runner.png
 description: D o   S u r f i n g
