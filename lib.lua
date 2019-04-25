@@ -40,13 +40,12 @@ local moonshine = require 'moonshine'
   -- using other tools.
 -- Feel quite f'ing expressive. Really push the sweetspot boundary on the limitations/expressive spectrum
 -- Should be an identifiable medium
--- Should not feel niche
 -- Simplicity should feel accessible/unimposing to beginners, relaxing and fun to advanced programmers
 -- Doesn't allow you to get confused if you're not a great programmer (e.g. no async necessary on the surface)
 -- Should be congruent with a way for non-coders to control it
 
 -- Consider having tiers of reference manuals, each one self-contained
--- Tiny API (PICO-8 SIZED)
+-- Tiny API
 -- Medium API
 -- Gigantic API
 
