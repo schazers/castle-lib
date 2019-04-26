@@ -1,5 +1,5 @@
 ---
-main: subatomic.lua
+main: subatomic_tweet.lua
 title: Subatomic Tweet
 owner: schazers
 primaryColor: #00000F
