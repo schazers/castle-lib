@@ -1,29 +1,15 @@
-require 'lib'
+require 'castle.lua'
 
-local horizLineYVals = {}
-local trigPts = {}
-local lastLineSpawnTime = 0
 local playerX = 0
-local shouldRetroTheme = true
-
-function updateTheme()
-  if shouldRetroTheme then
-    THEME('retro')
-    VOLUME('test_sound.mp3', 0.0)
-    VOLUME('test_sound_retro.mp3', 1.0)
-  else 
-    THEME('none')
-    VOLUME('test_sound.mp3', 1.0)
-    VOLUME('test_sound_retro.mp3', 0.0)
-  end
-end
+local trigPts = {}
+local horizLineYVals = {}
+local lastLineSpawnTime = 0
 
 function _LOAD()
   SRAND()
-  PLAYSND('test_sound.mp3', 1.0, true)
-  PLAYSND('test_sound_retro.mp3', 0.0, true)
+  
   THEME('retro')
-  updateTheme()
+  VOLUME('theme', 1.0)
 
   -- seed horiz lines
   for i = 1, 200 do
@@ -33,10 +19,18 @@ function _LOAD()
     end
     horizLineYVals[i] = val
   end
+
+  box1 = MAKE_RECT(0,0,10,10)
+  box2 = MAKE_RECT(20,20,40,40)
 end
 
 function _DRAW()
-  RECTFILL(0, 0, W(), H(), {0.05, 0.05, 0.15}) -- bg
+  -- bg
+  if theme.name == 'retro' then
+    RECTFILL(0, 0, W(), H(), {0.05, 0.05, 0.15})
+  else
+    RECTFILL(0, 0, W(), H(), 'black')
+  end
 
   -- stars
   for i = 1, 256 do
@@ -46,16 +40,28 @@ function _DRAW()
   end
 
   PSETS(trigPts, 'cyan') -- trig function aurora
-  CIRCFILL(W()/2, H()/2 + H()/10, W()/6, {0.9, 0.3, 0.0}) -- sun
-  RECTFILL(0, H()/2, W(), H(), {0.1, 0.1, 0.1}) -- ground bg
+  CIRCFILL(W()/2, H()/2 + H()/10, W()/6, 'orange') -- sun
+
+  -- ground bg
+  if theme.name == 'retro' then
+    RECTFILL(0, H()/2, W(), H(), {0.1, 0.1, 0.1})
+  elseif theme.name == 'gameboy' then
+    RECTFILL(0, H()/2, W(), H(), 'black')
+  else
+    RECTFILL(0, H()/2, W(), H(), {0.1, 0.1, 0.1})
+  end
 
   -- horiz lines
   local yHorizon = H()/2
   for i, y in ipairs(horizLineYVals) do
     local brightness = 0.65 + 0.35 * (y / yHorizon)
-    LINE(0, y + yHorizon, W(), y + yHorizon, {brightness * 1.0, 0.0, brightness * 1.0})
+    if theme.name == 'retro' then
+      LINE(0, y + yHorizon, W(), y + yHorizon, { brightness * 1.0, 0.0, brightness * 1.0 })
+    else
+      LINE(0, y + yHorizon, W(), y + yHorizon, 'purple')
+    end
   end
-  LINE(0, yHorizon, W(), yHorizon, {1,0,1})
+  LINE(0, yHorizon, W(), yHorizon, 'purple')
 
   -- vert lines
   for i = -W() * 8 + playerX, W() + 8 * W() + playerX, W() / 3 do
@@ -107,10 +113,25 @@ function _UPDATE(dt)
   if BTN('right') or BTN('d') then
     playerX = playerX - 1024 * dt
   end
+  
+  if BTNP('space') then
+    PLAYSND('fx.mp3', 0.0, true)
+  end
 
   -- theme
-  if BTNP('t') then
-    shouldRetroTheme = not shouldRetroTheme
-    updateTheme()
+  if BTNP('0') then
+    THEME('default')
+  elseif BTNP('1') then
+    THEME('retro')
+  elseif BTNP('2') then
+    THEME('gameboy')
+  elseif BTNP('3') then
+    THEME('sketch')
+  elseif BTNP('4') then
+    THEME('virtualboy')
+  elseif BTNP('5') then
+    THEME('lofi')
+  elseif BTNP('6') then
+    THEME('cyber')
   end
 end

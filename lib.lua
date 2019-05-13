@@ -3,21 +3,21 @@ require 'collision'
 require 'SpriteSheet'
 local moonshine = require 'moonshine'
 
--- "SNACK"
-
 -- HIGH LEVEL:
 -- Make it so that when someone has an idea to work on something,
 -- they just start doing it and then get really into it, and then
--- later start doing infrastructural coding. Do not allow the infra-
--- structural coding to happen up-front in order to get started with
--- a new project. They might never start.
+-- later start doing infrastructural coding. Do not allow any infra-
+-- structural coding to need to happen up-front in order to get 
+-- started with any new project. Ppl won't start nearly as often.
 
--- Make game-making feel like a "fun process of discovering what you're making" 
--- rather than a "plan to be made and executed upon"
+-- Make game-making feel like a "casual, fun process of discovering what you're making" 
+-- rather than a "plan required up-front, then executed upon". People should have free
+-- time and think "i'll make something in castle!" and then open upon castle and start
+-- a project without even knowing or considering what they're going to make yet.
 
 -- Measure how much this lib is helping by how many steps it
 -- reduces from user's workflow, how it 'feels', and qualitative feedback,
--- not just rigid things like number of lines of code saved.
+-- not just rigid things like number of lines of code saved, and so on.
 -- e.g. instead of "look up love.iamge, find love.newImage, create an image,
 -- pre-fetch an image, load it, figure out you have to scale an image, 
 -- compute the scaling for the image, maybe write a helper method, then 
@@ -108,6 +108,7 @@ local moonshine = require 'moonshine'
 -- CIRC(x, y, radius, color)
 -- LINE(x1, y1, x2, y2, color)
 -- PSET(x, y, color)
+-- PGET(x, y)
 
 -- CLIPPING:
 -- CLIP(x1, y1, x2, y2)
@@ -273,6 +274,10 @@ local moonshine = require 'moonshine'
 -- POST_PROMPT(titlePrompt, avatar)
 
 local Imgs = {}
+local currMusic = 'none'
+
+local soundFilenames = {}
+local imgFilenames = {}
 
 -- TODO: use castle's API to pre-fetch these assets ... before load time?
 -- TODO: allow user to specify file extensions, or not, and dynamically
@@ -284,25 +289,25 @@ local Imgs = {}
 -- also, name the sounds with the full file path, or just the leaf name?
 -- consider that trade-off
 function preprocess(file)
-  local soundFilenames = {}
-  local imgFilenames = {}
   for line in love.filesystem.lines('main.lua') do
     -- TODO: make it so changing PLAYSND's method name changes gmatch string as well
     for soundFilename in string.gmatch(line, "PLAYSND%('([^']+)") do
-      table.insert(soundFilenames, soundFilename)
+      if soundFilenames[soundFilename] == nil then
+        table.insert(soundFilenames, soundFilename)
+      end
     end
     -- TODO: make it so changing IMG's method name changes gmatch string as well
     for imgFilename in string.gmatch(line, "IMG%('([^']+)") do
-      table.insert(imgFilenames, imgFilename)
+      if imgFilenames[imgFilename] == nil then
+        table.insert(imgFilenames, imgFilename)
+      end
     end
-  end
-
-  for k, v in pairs(soundFilenames) do
-    Sounds[v] = Sound:new(v, 3) -- TODO: dynamically size the sound channel amount
-  end
-
-  for k, v in pairs(imgFilenames) do
-    Imgs[v] = love.graphics.newImage(v)
+    -- TODO: make it so changing SPRITE's method name changes gmatch string as well
+    for imgFilename in string.gmatch(line, "SPRITE%('([^']+)") do
+      if imgFilenames[imgFilename] == nil then
+        table.insert(imgFilenames, imgFilename)
+      end
+    end
   end
 end
 
@@ -310,12 +315,34 @@ local user = {}
 
 local startTime = nil
 
+function loadAssets()
+  table.insert(soundFilenames, 'retro_1.mp3')
+  table.insert(soundFilenames, 'retro_2.mp3')
+  table.insert(soundFilenames, 'lofi_1.mp3')
+  table.insert(soundFilenames, 'lofi_2.mp3')
+  table.insert(soundFilenames, 'gameboy.mp3')
+  table.insert(soundFilenames, 'virtualboy.mp3')
+  table.insert(soundFilenames, 'jamesshinra.mp3')
+  table.insert(soundFilenames, 'old_timey.mp3')
+
+  -- sounds
+  for k, v in pairs(soundFilenames) do
+    Sounds[v] = Sound:new(v, 3) -- TODO: dynamically size the sound channel amount
+  end
+
+  -- images
+  for k, v in pairs(imgFilenames) do
+    Imgs[v] = love.graphics.newImage(v)
+  end
+end
+
 -- TODO: get and load all sounds (use pre-fetch API), load em into mem
 -- TODO: get all images, pre-fetch 'em by default, load em into mem
 function love.load()
   -- TODO: should instead get main entry point from .castle and preprocess 
   -- starting there. also need to pre-process recursively
   preprocess('main.lua')
+  loadAssets()
 
   startTime = love.timer.getTime()
 
@@ -425,47 +452,8 @@ function REMOVE_FILTER(filterId)
   filter_effect = nil -- TODO: remove by filterId
 end
 
-function THEME(type)
-  theme = type
-  if type == 'none' or type == nil then
-    filter_effect = nil
-  elseif type == 'retro' then
-    filter_effect = moonshine(moonshine.effects.glow)
-    .chain(moonshine.effects.pixelate)
-    .chain(moonshine.effects.crt)
-    .chain(moonshine.effects.scanlines)
-    --.chain(moonshine.effects.dmg)
-    filter_effect.glow.strength = 10.0
-    filter_effect.glow.min_luma = 0.2
-    filter_effect.pixelate.size = {8, 4}
-    filter_effect.pixelate.feedback = 0.65
-    filter_effect.crt.distortionFactor = {1.05, 1.06}
-    filter_effect.scanlines.opacity = 1.0
-    filter_effect.scanlines.thickness = 0.2
-    -- filter_effect.dmg.palette = {
-    --   {10/255, 0/255, 0/255},
-    --   {142/255, 40/255, 60/255},
-    --   {200/255, 100/255, 120/255},
-    --   {255/255, 200/255, 210/255},
-    -- }
-  end
-end
-
--- TODO: make 'type' param optional
-function COLLIDED(a, b, type)
-  if type == 'basic' then
-    -- TODO: infer bounding types based upon object types
-    -- circle/rect/line
-  elseif type == 'perfect' then
-  end
-end
-
-
--- TODO: need to call love's getColor and then setColor back to before after calling
--- each method. see IMG(...) below for code that does this
-
 -- TODO: add more?
-local standardColors = {
+local retroThemeColors = {
   black = {0, 0, 0},
   white = {1, 1, 1},
   gray = {.5, .5, .5},
@@ -473,10 +461,175 @@ local standardColors = {
   green = {0, 1, 0},
   blue = {0, 0, 1},
   yellow = {1.0, 1.0, 0.0},
-  orange = {0.5, 1.0, 0},
+  orange = {0.9, 0.3, 0},
   purple = {1.0, 0.0, 1.0},
   cyan = {0.0, 1.0, 1.0},
 }
+
+local gameboyThemeColors = {
+  black = {156/255, 186/255, 41/255},
+  white = {140/255, 170/255, 38/255},
+  gray = {140/255, 170/255, 38/255},
+  red = {49/255, 97/255, 50/255},
+  green = {49/255, 97/255, 50/255},
+  blue = {49/255, 97/255, 50/255},
+  yellow = {17/255, 55/255, 17/255},
+  orange = {49/255, 97/255, 50/255},
+  purple = {17/255, 55/255, 17/255},
+  cyan = {17/255, 55/255, 17/255},
+}
+
+local virtualBoyColors = {
+  black = {0, 0, 0},
+  white = {1, .08, .08},
+  gray = {1, .08, .08},
+  red = {1, .08, .08},
+  green = {1, .08, .08},
+  blue = {1, .08, .08},
+  yellow = {1, .08, .08},
+  orange = {1, .08, .08},
+  purple = {1, .08, .08},
+  cyan = {1, .08, .08},
+}
+
+local sketchThemeColors = {
+  black = {0, 0, 0},
+  white = {1, 1, 1},
+  gray = {.5, .5, .5},
+  red = {0.75, 0.75, 0.75},
+  green = {0.7, 0.7, 0.7},
+  blue = {0.6, 0.6, 0.6},
+  yellow = {0.95, 0.95, 0.95},
+  orange = {0.8, 0.8, 0.8},
+  purple = {0.85, 0.85, 0.85},
+  cyan = {0.95, 0.95, 0.95},
+}
+
+local lofiThemeColors = {
+  black = {0, 0, 0},
+  white = {1, 1, 1},
+  gray = {.65, .65, .65},
+  red = {249/255, 140/255, 182/255},
+  green = {145/255, 210/255, 144/255},
+  blue = {154/255, 206/255, 223/255},
+  yellow = {255/255, 250/255, 129/255},
+  orange = {252/255, 169/255, 133/255},
+  purple = {165/255, 137/255, 193/255},
+  cyan = {204/255, 236/255, 239/255},
+}
+
+local currThemeColors = retroThemeColors
+
+function THEME(newTheme)
+  if newTheme == them then
+    return
+  end
+
+  STOPSND(currMusic)
+
+  theme = newTheme
+  if theme == 'none' or theme == nil then
+    filter_effect = nil
+  elseif theme == 'retro' then
+    currThemeColors = retroThemeColors
+    currMusic = 'retro_1.mp3'
+    network.async(function()
+      filter_effect = moonshine(moonshine.effects.glow)
+      --.chain(moonshine.effects.pixelate)
+      .chain(moonshine.effects.crt)
+      .chain(moonshine.effects.scanlines)
+      filter_effect.glow.strength = 10.0
+      filter_effect.glow.min_luma = 0.2
+      --filter_effect.pixelate.size = {8, 4}
+      --filter_effect.pixelate.feedback = 0.65
+      filter_effect.crt.distortionFactor = {1.05, 1.06}
+      filter_effect.scanlines.opacity = 1.0
+      filter_effect.scanlines.thickness = 0.4
+    end)
+  elseif theme == 'sketch' then
+    currThemeColors = sketchThemeColors
+    currMusic = 'old_timey.mp3'
+    network.async(function()
+      filter_effect = moonshine(moonshine.effects.sketch)
+      .chain(moonshine.effects.fastgaussianblur)
+      .chain(moonshine.effects.filmgrain)
+      filter_effect.sketch.amp = 0.0007
+      filter_effect.filmgrain.size = 4
+      filter_effect.filmgrain.opacity = 0.7
+      filter_effect.fastgaussianblur.taps = 5
+    end)
+  elseif theme == 'gameboy' then
+    currThemeColors = gameboyThemeColors
+    currMusic = 'gameboy.mp3'
+    network.async(function()
+      filter_effect = moonshine(moonshine.effects.pixelate)
+      --.chain(moonshine.effects.dmg)
+      --filter_effect.dmg.palette = 'green'
+      filter_effect.pixelate.size = {5, 5}
+      filter_effect.pixelate.feedback = 0.0
+    end)
+  elseif theme == 'virtualboy' then
+    currThemeColors = virtualBoyColors
+    currMusic = 'virtualboy.mp3'
+    network.async(function()
+      filter_effect = moonshine(moonshine.effects.glow)
+      .chain(moonshine.effects.pixelate)
+      .chain(moonshine.effects.scanlines)
+      filter_effect.pixelate.size = {2, 2}
+      filter_effect.glow.strength = 6.0
+      filter_effect.glow.min_luma = 0.3
+      -- filter_effect.dmg.palette = {
+      --   {10/255, 0/255, 0/255},
+      --   {142/255, 40/255, 60/255},
+      --   {200/255, 100/255, 120/255},
+      --   {255/255, 200/255, 210/255},
+      -- }
+    end)
+  elseif theme == 'cyber' then
+    currThemeColors = lofiThemeColors
+    currMusic = 'jamesshinra.mp3'
+    network.async(function()
+      filter_effect = moonshine(moonshine.effects.fastgaussianblur)
+      filter_effect.fastgaussianblur.taps = 3
+    end)
+  elseif theme == 'lofi' then
+    currThemeColors = retroThemeColors
+    currMusic = 'lofi_1.mp3'
+    network.async(function()
+      filter_effect = moonshine(moonshine.effects.glow)
+      .chain(moonshine.effects.fastgaussianblur)
+      .chain(moonshine.effects.godsray)
+      filter_effect.fastgaussianblur.taps = 3
+      filter_effect.glow.strength = 1.0
+      filter_effect.glow.min_luma = 0.4
+    end)
+  end
+
+  PLAYSND(currMusic, 1.0, true)
+end
+
+-- TODO: make 'type' param optional
+function COLLIDED(a, b, type)
+  if type == nil then
+    type = 'basic'
+  end
+
+  if type == 'basic' then
+    if a.type == 'rect' and b.type == 'rect' then
+      -- TODO: do AABB collision
+    end
+    -- TODO: infer bounding types based upon object types
+    -- circle/rect/line
+  elseif type == 'box' then
+    -- use AABB (or other type of?) bounding boxes
+  elseif type == 'perfect' then
+
+  end
+end
+
+
+-- TODO: need to call love's getColor and then setColor back to before after calling
+-- each method. see IMG(...) below for code that does this
 
 -- TODO: fixed pallette? rgb?
 -- TODO: choose a set of pallete presets?
@@ -487,8 +640,8 @@ local function setColor(col)
     col = {1,1,1}
   end
 
-  if standardColors[col] then
-    col = standardColors[col]
+  if currThemeColors[col] then
+    col = currThemeColors[col]
   end
 
   love.graphics.setColor(col[1], col[2], col[3], 1.0)
@@ -516,6 +669,28 @@ local function drawRect(type, x1, y1, x2, y2, color)
   love.graphics.rectangle(type, x, y, w, h)
 end
 
+-- TODO: make all sorts of 
+local entities = {}
+
+function MAKE_RECT(x1, y1, x2, y2)
+  local xA, yA, xB, yB = x1, y1, x2, y2
+
+  local objectID = #entities
+
+  local newRect = {
+    id = objectID,
+    type = 'rect',
+    x1 = xA,
+    y1 = yA,
+    x2 = xB,
+    y2 = yB
+  }
+
+  entities[objectID] = newRect
+
+  return newRect
+end
+
 function RECT(x1, y1, x2, y2, color)
   drawRect('line', x1, y1, x2, y2, color)
 end
@@ -536,13 +711,29 @@ function CIRC(x, y, r, color)
 end
 
 function CIRCFILL(x, y, r, color)
-  drawCircle('fill', x, y, r, color)
+  if theme == 'sketch' then
+    drawCircle('fill', x, y, r, color)
+    -- draw an outline brighter than the orig color
+    if currThemeColors[color] then
+      color = currThemeColors[color]
+    end
+    color[1] = math.min(color[1] + 0.5 * (1.0 - color[1]), 1.0)
+    color[2] = math.min(color[2] + 0.5 * (1.0 - color[2]), 1.0)
+    color[3] = math.min(color[3] + 0.5 * (1.0 - color[3]), 1.0)
+    drawCircle('line', x, y, r, color)
+  else
+    drawCircle('fill', x, y, r, color)
+  end
 end
 
 function LINE(x1, y1, x2, y2, color)
   local prevWidth = love.graphics.getLineWidth()
   if theme == 'retro' then
     love.graphics.setLineWidth(3.0)
+  elseif theme == 'gameboy' then
+    love.graphics.setLineWidth(4.0)
+  elseif theme == 'virtualboy' then
+    love.graphics.setLineWidth(4.0)
   end
   setColor(color)
   love.graphics.line(x1, y1, x2, y2)
@@ -554,6 +745,10 @@ function PSET(x, y, color)
   local prevSize = love.graphics.getPointSize()
   if theme == 'retro' then
     love.graphics.setPointSize(3.0)
+  elseif theme == 'gameboy' then
+    love.graphics.setPointSize(6.0)
+  elseif theme == 'virtualboy' then
+    love.graphics.setPointSize(3.0)
   end
   setColor(color)
   love.graphics.points({x, y})
@@ -564,10 +759,18 @@ function PSETS(pts, color)
   local prevSize = love.graphics.getPointSize()
   if theme == 'retro' then
     love.graphics.setPointSize(3.0)
+  elseif theme == 'gameboy' then
+    love.graphics.setPointSize(6.0)
+  elseif theme == 'virtualboy' then
+    love.graphics.setPointSize(3.0)
   end
   setColor(color)
   love.graphics.points(pts)
   love.graphics.setPointSize(prevSize)
+end
+
+function PGET(x, y) 
+  -- TODO(jason): this one is important
 end
 
 -- TODO: supplying filename needs to create image at load-time automatically
@@ -628,15 +831,23 @@ function USERNAME()
   end
 end
 
+
+-- TODO(use ayla's sprite sheets?)
+function SPRITE(filename, index, x, y, numberOfSprites, flipHorizontal, flipVertical)
+
+end
+
 -- TODO: pre-fetch all sounds ever played, load them into sound engine
 -- with a default volume and other params. if sound is larger than a
 -- certain filesize... maybe set it to stream, rather than static?
 -- can we intuit this somehow?
 
--- TODO: play actual sound passed in
 -- TODO: volume prob not need to be passed every time...
 -- TODO: make volume+looping optional params
 -- TODO: allow an onFinishFunc per sound
+-- TODO: dig deep inside love, NEED to make looping seamless
+-- TODO: need to allow filtering and some other things OpenAL provides
+-- TODO: prob need additional C-level DSP stuff
 function PLAYSND(filename, volume, shouldLoop)
   if Sounds[filename] then
     Sounds[filename]:setVolume(volume)
@@ -648,6 +859,10 @@ end
 function VOLUME(filename, volume)
   -- TODO: throw warning if volume outside of range?
   -- silently clamping for now
+  if filename == 'theme' then
+    filename = currMusic
+  end
+
   volume = CLAMP(0.0, volume, 1.0)
   if Sounds[filename] then
     Sounds[filename]:setVolume(volume)

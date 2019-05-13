@@ -157,6 +157,7 @@ end
 moonshine.effects = setmetatable({}, {__index = function(self, key)
   local ok, effect = pcall(require, BASE .. "." .. key)
   if not ok then
+    print(effect) -- 'effect' holds the error if pcall fails
     error("No such effect: "..key, 2)
   end
 
