@@ -202,12 +202,12 @@ function love.load()
     end
   end
 
-  table.insert(soundFilenames, 'themes/retro_2.mp3')
+  table.insert(soundFilenames, 'themes/retro_1.mp3')
 
   loadAssets()
 
   THEME('retro')
-  PLAYSND('themes/retro_2.mp3',1.0,true)
+  PLAYSND('themes/retro_1.mp3',1.0,true)
 
   if _L ~=nil then _L() end
 end
