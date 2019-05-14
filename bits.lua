@@ -207,7 +207,7 @@ function love.load()
   loadAssets()
 
   THEME('retro')
-  PLAYSND('test_sound_2.mp3',1.0,true)
+  PLAYSND('themes/retro_2.mp3',1.0,true)
 
   if _L ~=nil then _L() end
 end
