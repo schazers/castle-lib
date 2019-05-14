@@ -202,7 +202,7 @@ function love.load()
     end
   end
 
-  table.insert(soundFilenames, 'test_sound_2.mp3')
+  table.insert(soundFilenames, 'themes/retro_2.mp3')
 
   loadAssets()
 
