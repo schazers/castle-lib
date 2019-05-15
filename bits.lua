@@ -245,6 +245,11 @@ function love.load()
     end
   end
 
+  if TS ~= nil then
+    themesongFilename = TS..".mp3"
+    -- TODO: error handling on bad inputs to TS
+  end
+
   table.insert(soundFilenames, themesongFilename)
   table.insert(soundFilenames, gameWinFilename)
   table.insert(soundFilenames, gameOverFilename)
