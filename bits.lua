@@ -1,5 +1,4 @@
 require 'sounds'
-require 'collision'
 local moonshine = require 'moonshine'
 
 -- Number of bits on both axes. Can be set from tweet code.
@@ -11,6 +10,23 @@ local timers = {}
 local NUM_TIMERS = 9
 local startTime = nil
 local user = {}
+local themesongFilename = 'themes/retro_1.mp3'
+local gameOverFilename = 'bits_game_over.mp3'
+local gameWinFilename = 'bits_game_win.mp3'
+
+local colors = {
+  {1, 1, 1},              -- 1 = white
+  {0, 0, 0},              -- 2 = black
+  {0.1, 0.1, 0.1},        -- 3 = dark
+  {0.5/2, 0.5/2, 0.5/2},  -- 4 = gray
+  {1.0/2, 0.0, 1.0/2},    -- 5 = purple
+  {0, 0, 1/2},            -- 6 = blue
+  {0.0, 1.0/2, 1.0/2},    -- 7 = cyan
+  {0, 1/2, 0},            -- 8 = green
+  {1.0/2, 1.0/2, 0.0},    -- 9 = yellow
+  {0.9/2, 0.3/2, 0},      -- 10 = orange
+  {1/2, 0, 0},            -- 11 = red
+}
 
 -- KEY PRESSES
 -- when a lower-case value is set to 1,
@@ -24,11 +40,15 @@ local user = {}
 -- s = spacebar, u = up, d = down, l = left, r = right
 s,u,d,l,r,S,U,D,L,R = 0,0,0,0,0,0,0,0,0,0
 
+-- "GAME OVER", and "GAME WON" CONVENIENCE VARIABLES - set with DIE(), WIN()
+GO,GW = false,false
+
 -- MATHS
 function FLR(a) return math.floor(a) end
 function DEG(a) return math.deg(a) end
 function RAD(a) return math.rad(a) end
 function CEIL(a) return math.ceil(a) end
+function FLR(a) return math.floor(a) end
 -- TODO: can condense below two RAND funcs
 -- Gen integer in range [a,b]
 function RN(a, b) return FLR(math.random(a, b)) end
@@ -54,8 +74,10 @@ function ACOS(x) return math.acos(x) end
 function ATAN(x) return math.atan(x) end
 function ATAN2(x, y) return math.atan2(y, x) end
 function PI() return math.pi end
-function MIN(nums) return math.min(nums) end -- TODO: variable-length arglist (ref: see math.min)
-function CL(min,val,max) CLAMP(min,val,max) end
+--function MIN(nums) return math.min(nums) end -- TODO: variable-length arglist (ref: see math.min)
+function MAX(a,b) return math.max(a,b) end
+function MIN(a,b) return math.min(a,b) end
+function CL(min,val,max) return CLAMP(min,val,max) end
 function CLAMP(min, val, max)
   if min > max then 
     min, max = max, min
@@ -64,19 +86,21 @@ function CLAMP(min, val, max)
 end
 
 -- TIMERS
--- Pass no 'idx', e.g. call 'T()', to access program's total time so far
-function T(idx) -- GET TIMES OF TIMERS
+-- TIP: Pass no 'idx', e.g. call 'T()', to access program's total time so far
+-- GET TIME OF TIMER # "IDX"
+function T(idx)
   if idx == nil then return love.timer.getTime() - startTime
   else return love.timer.getTime() - timers[idx] end
 end
-function RT(idx) timers[idx] = love.timer.getTime() end -- RESET A TIMER
+-- RESET TIMER BY IDX 
+function RT(idx) timers[idx] = love.timer.getTime() end
 
-function B(x,y,c) BIT(x,y,c) end      -- SET BIT
-function H(y,x1,x2,col) for i=x1,x2 do BIT(i,y,col) end end -- HORIZONTAL LINE OF BITS
-function V(x,y1,y2,col) for i=y1,y2 do BIT(x,i,col) end end -- VERTICAL LINE OF BITS
-function RB(x1,y1,x2,y2,col) for i=y1,y2 do H(i,x1,x2,col) end end -- RECT OF BITS
-function AB(theBits) for i=0,#theBits do B(theBits[1],theBits[2],theBits[3]) end end -- SET TABLE OF BITS
-function BG(col) RB(0,0,N,N,col) end -- DRAW SCREEN A BACKGROUND COLOR
+-- BITS
+function B(x,y,c) BIT(x,y,c) end -- SET [B]IT
+function H(y,x1,x2,col) for i=x1,x2 do BIT(i,y,col) end end -- [H]ORIZONTAL LINE OF BITS
+function V(x,y1,y2,col) for i=y1,y2 do BIT(x,i,col) end end -- [V]ERTICAL LINE OF BITS
+function RB(x1,y1,x2,y2,col) for i=y1,y2 do H(i,x1,x2,col) end end -- [R]ECT OF [B]ITS
+function BG(col) RB(0,0,N,N,col) end -- DRAW SCREEN's [B]ACK[G]ROUND COLOR
 
 function G(xBit,yBit) return bits[xBit][yBit] end -- GET BIT - Get color of bit. Returns 0 if no bit.
 function GC(col) -- GET COL OF N BITS
@@ -92,19 +116,38 @@ function GR(row) -- GET ROW OF N BITS
   return bitsToReturn
 end
 
+-- AVATAR DRAWING METHODS
 function A(x1,y1,x2,y2)
+  if not x2 or not y2 then
+    x2,y2 = x1+1,y1+1
+  end
   x1 = FLR(CLAMP(1,x1,N))
   y1 = FLR(CLAMP(1,y1,N))
   local w = love.graphics.getWidth()
   local h = love.graphics.getHeight()
   xA,xB = (x1-1)*(w/N),(x2-1)*(w/N)
   yA,yB = (y1-1)*(h/N),(y2-1)*(h/N)
-  AVATAR(xA,yA,xB,yB,aspect)
+  if user.avatarImage then
+    AVATAR(xA,yA,xB,yB,aspect)
+  else
+    RB(x1,y1,x2,y2,1)
+  end
   bits[x1][y1] = -1
 end
 
 -- SOUND
-function S(fname) PLAYSND(fname,1.0,false) end
+function S(fname,shouldLoop) 
+  if shouldLoop == nil then
+    shouldLoop = false
+  elseif shouldLoop == 1 then
+    shouldLoop = true
+  end
+  PLAYSND(fname,1.0,shouldLoop)
+end
+
+function ST(fname)
+  STOPSND(fname)
+end
 
 
 -- TODO: based upon pre-processing the file, figure out what input keys are used, 
@@ -202,12 +245,14 @@ function love.load()
     end
   end
 
-  table.insert(soundFilenames, 'themes/retro_1.mp3')
+  table.insert(soundFilenames, themesongFilename)
+  table.insert(soundFilenames, gameWinFilename)
+  table.insert(soundFilenames, gameOverFilename)
 
   loadAssets()
 
   THEME('retro')
-  PLAYSND('themes/retro_1.mp3',1.0,true)
+  PLAYSND(themesongFilename,1.0,true)
 
   if _L ~=nil then _L() end
 end
@@ -221,21 +266,17 @@ local mouseHeld = false
 -- TODO:
 function love.update(dt)
   -- TODO: update sound engine and anything else per update call
-  if _U ~=nil then _U(dt) end
+  if _U ~=nil and not GO and not GW then _U(dt) end
 
   -- update [x,y,X,Y] based upon arrow key input
   X = X - L * 12 * dt + R * 12 * dt
   Y = Y - U * 12 * dt + D * 12 * dt
   x = x - l + r
   y = y - u + d
-  if X < 1 then X = 1 end
-  if X > N then X = N end
-  if Y < 1 then Y = 1 end
-  if Y > N then Y = N end
-  if x < 1 then x = 1 end
-  if x > N then x = N end
-  if y < 1 then y = 1 end
-  if y > N then y = N end
+  X = CLAMP(1, X, N)
+  Y = CLAMP(1, Y, N)
+  x = CLAMP(1, x, N)
+  y = CLAMP(1, y, N)
 
   -- nil any input
   for k, v in pairs(keysJustPressed) do
@@ -280,6 +321,10 @@ function love.keypressed(key, scancode, isrepeat)
     end
     keysJustPressed[key] = true
     keysHeld[key] = true
+  end
+
+  if key == 'p' and (GO or GW) then
+    POST("Just screenshottin this bits game...")
   end
 end
 
@@ -332,21 +377,43 @@ function MOUSEP()
   end
 end
 
-function DIE_AND_RESTART()
+function DIE()
+  if not GO then
+    PLAYSND(gameOverFilename)
+    VOLUME(themesongFilename, 0.36)
+    GO = true
+  end
+end
 
-
+function WIN()
+  if not GW then
+    VOLUME(themesongFilename, 0.36)
+    PLAYSND(gameWinFilename)
+    GW = true
+  end
 end
 
 local filter_effect = nil
 
 function love.draw()
+
+  local drawFunc = (function()
+    if _D ~=nil then _D() end
+    if GO or GW then
+      local msg = ""
+      if GO then msg = "Game Over" end
+      if GW then msg = "You Win!" end
+      TEXT(msg, 20, 20, 2, 1)
+      TEXT("Ctrl or Cmd + R to restart", 20, 60, 2, 1)
+      TEXT("Press 'P' to post a screenshot!", 20, 100, 2, 1)
+    end
+  end)
+
   --w,h,hw,hh=W(),H(),HW(),HH()
   if filter_effect then
-    filter_effect(function()
-      if _D ~=nil then _D() end
-    end)
+    filter_effect(drawFunc)
   else
-    if _D ~=nil then _D() end
+    drawFunc()
   end
   if showingManual then
     -- TODO: show manual (see lib.lua for example)
@@ -377,7 +444,6 @@ function THEME(type)
     .chain(moonshine.effects.pixelate)
     .chain(moonshine.effects.crt)
     .chain(moonshine.effects.scanlines)
-    --.chain(moonshine.effects.dmg)
     filter_effect.glow.strength = 10.0
     filter_effect.glow.min_luma = 0.2
     filter_effect.pixelate.size = {8, 4}
@@ -385,21 +451,6 @@ function THEME(type)
     filter_effect.crt.distortionFactor = {1.05, 1.06}
     filter_effect.scanlines.opacity = 1.0
     filter_effect.scanlines.thickness = 0.2
-    -- filter_effect.dmg.palette = {
-    --   {10/255, 0/255, 0/255},
-    --   {142/255, 40/255, 60/255},
-    --   {200/255, 100/255, 120/255},
-    --   {255/255, 200/255, 210/255},
-    -- }
-  end
-end
-
--- TODO: make 'type' param optional
-function COLLIDED(a, b, type)
-  if type == 'basic' then
-    -- TODO: infer bounding types based upon object types
-    -- circle/rect/line
-  elseif type == 'perfect' then
   end
 end
 
@@ -409,29 +460,6 @@ function PIC(px, py, cx, cy, rad)
   return dx * dx + dy * dy <= rad * rad
 end
 
-
--- TODO: need to call love's getColor and then setColor back to before after calling
--- each method. see IMG(...) below for code that does this
-
--- TODO: make these apply to each theme
-
-local paletteColors = {
-  {1, 1, 1},        -- white
-  {0, 0, 0},        -- black
-  {0.1, 0.1, 0.1},  -- dark
-  {0.5/2, 0.5/2, 0.5/2},  -- gray
-  {1.0/2, 0.0, 1.0/2},  -- purple
-  {0, 0, 1/2},        -- blue
-  {0.0, 1.0/2, 1.0/2},  -- cyan
-  {0, 1/2, 0},        -- green
-  {1.0/2, 1.0/2, 0.0},  -- yellow
-  {0.9/2, 0.3/2, 0},    -- orange
-  {1/2, 0, 0},        -- red
-}
-
--- TODO: fixed pallette? rgb?
--- TODO: choose a set of pallete presets?
--- TODO: see ayla/paul's infra-code
 local function setColor(col, alpha)
   alpha = alpha or 1.0
 
@@ -440,8 +468,8 @@ local function setColor(col, alpha)
     col = {0,0,0}
   end
 
-  if paletteColors[col] then
-    col = paletteColors[col]
+  if colors[col] then
+    col = colors[col]
   else
     -- TODO: throw some error/warning
   end
@@ -449,10 +477,22 @@ local function setColor(col, alpha)
   love.graphics.setColor(col[1], col[2], col[3], alpha)
 end
 
+function POST(message)
+  network.async(function()
+    castle.post.create {
+      message = message,
+      media = 'capture',
+    }
+  end)
+end
+
 -- TODO: use size and font
 -- TODO: pre-fetch font in load
 function TEXT(message, xPos, yPos, scale, color, font)
   if message ~= nil then
+    if color == nil then
+      color = 1
+    end
     setColor(color)
     love.graphics.print(message, xPos, yPos, 0, scale, scale)
   end
@@ -547,6 +587,12 @@ end
 -- TODO: make volume+looping optional params
 -- TODO: allow an onFinishFunc per sound
 function PLAYSND(filename, volume, shouldLoop)
+  if volume == nil then
+    volume = 1.0
+  end
+  if shouldLoop == nil then
+    shouldLoop = false
+  end
   if Sounds[filename] then
     Sounds[filename]:setVolume(volume)
     Sounds[filename]:setLooping(shouldLoop)
