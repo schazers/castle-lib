@@ -1,5 +1,5 @@
 ---
-main: bit_tunnel.lua
+main: submarine_adventure.lua
 title: Submarine Adventure
 owner: schazers
 primaryColor: #0000FF
