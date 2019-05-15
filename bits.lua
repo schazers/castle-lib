@@ -271,17 +271,19 @@ local mouseHeld = false
 -- TODO:
 function love.update(dt)
   -- TODO: update sound engine and anything else per update call
-  if _U ~=nil and not GO and not GW then _U(dt) end
+  if not GO and not GW then
+    if _U ~=nil then _U(dt) end
 
-  -- update [x,y,X,Y] based upon arrow key input
-  X = X - L * 12 * dt + R * 12 * dt
-  Y = Y - U * 12 * dt + D * 12 * dt
-  x = x - l + r
-  y = y - u + d
-  X = CLAMP(1, X, N)
-  Y = CLAMP(1, Y, N)
-  x = CLAMP(1, x, N)
-  y = CLAMP(1, y, N)
+    -- update [x,y,X,Y] based upon arrow key input
+    X = X - L * 16 * dt + R * 16 * dt
+    Y = Y - U * 16 * dt + D * 16 * dt
+    x = x - l + r
+    y = y - u + d
+    X = CLAMP(1, X, N)
+    Y = CLAMP(1, Y, N)
+    x = CLAMP(1, x, N)
+    y = CLAMP(1, y, N)
+  end
 
   -- nil any input
   for k, v in pairs(keysJustPressed) do
