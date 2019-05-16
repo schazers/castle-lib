@@ -2,7 +2,7 @@
 main: submarine_adventure.lua
 title: Submarine Adventure
 owner: schazers
-primaryColor: 0000ff
+primaryColor: 000064
 description: S U B M A R I N E   A D V E N T U R E
 coverImage: submarine_adventure.png
 dimensions: 512x512
