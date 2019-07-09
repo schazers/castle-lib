@@ -3,5 +3,5 @@ main: tv_clicker_tweet.lua
 title: TV Clicker Tweet
 owner: schazers
 primaryColor: #00000F
-coverImage: https://github.com/schazers/castle-lib/blob/master/tv_clicker_tweet.png
+coverImage: tv_clicker_tweet.png
 description: U H F
