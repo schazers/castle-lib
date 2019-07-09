@@ -3,5 +3,5 @@ main: retro_runner.lua
 title: Retro Runner
 owner: schazers
 primaryColor: #00000F
-coverImage: https://github.com/schazers/castle-lib/blob/master/retro_runner.png
+coverImage: ./retro_runner.png
 description: D o   S u r f i n g
