@@ -3,5 +3,5 @@ main: bit_waveform.lua
 title: Bit Waveform
 owner: schazers
 primaryColor: #00000F
-coverImage: https://github.com/schazers/castle-lib/blob/master/bit_waveform.png
+coverImage: bit_waveform.png
 description: S e n s a t i o n a l
