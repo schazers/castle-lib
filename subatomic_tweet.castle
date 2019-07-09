@@ -3,5 +3,5 @@ main: subatomic_tweet.lua
 title: Subatomic Tweet
 owner: schazers
 primaryColor: #00000F
-coverImage: https://github.com/schazers/castle-lib/blob/master/subatomic_tweet.png
+coverImage: subatomic_tweet.png
 description: Q u a r k
