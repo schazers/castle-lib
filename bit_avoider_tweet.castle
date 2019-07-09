@@ -3,5 +3,5 @@ main: bit_avoider_tweet.lua
 title: Bit Avoider Tweet
 owner: schazers
 primaryColor: #00000F
-coverImage: https://github.com/schazers/castle-lib/blob/master/bit_avoider_tweet.png
+coverImage: bit_avoider_tweet.png
 description: T h e   G a m e   O f   L i f e
