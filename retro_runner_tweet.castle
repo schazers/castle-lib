@@ -3,5 +3,5 @@ main: retro_runner_tweet.lua
 title: Retro Runner Tweet
 owner: schazers
 primaryColor: #00000F
-coverImage: https://github.com/schazers/castle-lib/blob/master/retro_runner_tweet.png
+coverImage: retro_runner_tweet.png
 description: T w e e t   S u r f i n g
